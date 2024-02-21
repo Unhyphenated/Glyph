@@ -26,7 +26,10 @@ public class Lox {
   }
 
   private static void runFile(String path) throws IOException {
+    // Reads and stores all bytes contained within a file
     byte[] bytes = Files.readAllBytes(Paths.get(path));
+
+    // Runs the file by converting bytes into string
     run(new String(bytes, Charset.defaultCharset()));
 
     // Indicates an error has occurred
@@ -37,10 +40,10 @@ public class Lox {
     InputStreamReader input = new InputStreamReader(System.in);
     BufferedReader reader = new BufferedReader(input);
 
-    for (;;) { 
-      System.out.print("> ");
-      String line = reader.readLine();
-      if (line == null) break;
+    for (;;) { // Infinite loop
+      System.out.print("> "); // Renders command line
+      String line = reader.readLine(); // Awaits user input or command
+      if (line == null) break; // Breaks the loop if EOF character is read
       run(line);
       hadError = false;
     }
