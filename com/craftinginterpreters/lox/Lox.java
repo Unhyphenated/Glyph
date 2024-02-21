@@ -13,11 +13,14 @@ public class Lox {
   static boolean hadError = false;
   public static void main(String[] args) throws IOException {
     if (args.length > 1) {
+      // Produces error message when several commands are entered when interpreter is ran
       System.out.println("Usage: jlox [script]");
       System.exit(64); 
     } else if (args.length == 1) {
+      // Runs a file (usually a file is ran when there is 1 argument)
       runFile(args[0]);
     } else {
+      // Prompt is rendered when user input is requested
       runPrompt();
     }
   }
