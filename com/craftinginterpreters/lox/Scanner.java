@@ -19,7 +19,7 @@ class Scanner {
     }
 
     List<Token> scanTokens() {
-        // Scans 
+        // Scans each char and appends all tokens to an ArrayList
         while (!isAtEnd()) {
             start = current;
             scanToken();
@@ -61,6 +61,13 @@ class Scanner {
                     addToken(SLASH);
                 }
                 break;
+            case ' ': 
+            case '\t': 
+            case '\r': 
+                break;
+            case '\n':
+                line++;
+                break;
 
             default: Lox.error(line, "Unexpected character."); break;
         }
@@ -94,7 +101,7 @@ class Scanner {
     }
 
     private char peek() {
-        // 
+        // Checks current char 
         if (isAtEnd()) return '\0';
         return source.charAt(current);
     }
