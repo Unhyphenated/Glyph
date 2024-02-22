@@ -55,7 +55,12 @@ class Scanner {
                 addToken(match('=') ? GREATER_EQUAL: GREATER); 
                 break;
             case '/':
-                i
+                if (match('/')) {
+                    while(peek() != '\n' && !isAtEnd()) advance();
+                } else {
+                    addToken(SLASH);
+                }
+                break;
 
             default: Lox.error(line, "Unexpected character."); break;
         }
@@ -80,10 +85,17 @@ class Scanner {
     }
 
     private boolean match(char expected) {
+        // Consumes the current char and moves one char along the line
         if (isAtEnd()) return false;
         if (source.charAt(current++) != expected) return false;
         
         current++;
         return true;
+    }
+
+    private char peek() {
+        // 
+        if (isAtEnd()) return '\0';
+        return source.charAt(current);
     }
 }
