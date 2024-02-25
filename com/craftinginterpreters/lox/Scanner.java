@@ -71,7 +71,13 @@ class Scanner {
             case '"':
                 string();
 
-            default: Lox.error(line, "Unexpected character."); break;
+            default: 
+                if (isDigit(c)) {
+                    number();
+                } else {
+                    Lox.error(line, "Unexpected character."); 
+                }
+                break;
         }
     }
 
@@ -130,5 +136,32 @@ class Scanner {
         String value = source.substring(start + 1, current - 1);
 
         addToken(STRING, value);
+    }
+
+    private boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    private void number() {
+        // Keep advancing if a digit is discovered.
+        while (isDigit(peek())) advance();
+
+        // If a decimal point is found, check if the next character is a number.
+        // If it is, continue. Otherwise, extract the number before the decimal point.
+        if (peek() == '.' && isDigit(peekNext())) {
+            advance();
+            while (isDigit(peek())) advance();
+        }
+
+        // Convert the string to double.
+        double value = Double.parseDouble(source.substring(start, current));
+        addToken(NUMBER, value);
+    }
+
+    private char peekNext() {
+        // While peek merely scans the current character without consuming it,
+        // peekNext scans the character right after.
+        if (current + 1 >= source.length()) return '\0';
+        return source.charAt(current + 1);
     }
 }
