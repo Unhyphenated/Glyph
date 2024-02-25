@@ -68,6 +68,8 @@ class Scanner {
             case '\n':
                 line++;
                 break;
+            case '"':
+                string();
 
             default: Lox.error(line, "Unexpected character."); break;
         }
@@ -104,5 +106,29 @@ class Scanner {
         // Checks current char 
         if (isAtEnd()) return '\0';
         return source.charAt(current);
+    }
+
+    private void string() {
+        // Traverses all characters past the first '"' scanning each character until the end
+        // of the program is reached.
+        while (peek() != '"' && !isAtEnd()) {
+            // If a line break occurs, move to the next one
+            if (peek() == '\n') line++;
+            // Consume each character and move onto the next one
+            advance();
+        }
+
+        // If the second '"' is not found, raise an error.
+        if (isAtEnd()) {
+            Lox.error(line, "Undetermined string.");
+        }
+        // Consume the closing '"'.
+        advance();
+
+        // Initialise the string, avoiding the first '"', (hence start + 1)
+        // and the second '"', (hence current - 1).
+        String value = source.substring(start + 1, current - 1);
+
+        addToken(STRING, value);
     }
 }
