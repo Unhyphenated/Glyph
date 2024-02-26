@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
+import static com.craftinginterpreters.lox.Scanner;
+
 public class Lox {
   static boolean hadError = false;
   public static void main(String[] args) throws IOException {
