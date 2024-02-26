@@ -1,3 +1,5 @@
+package com.craftinginterpreters.lox;
+
 public class DoubleParser {
     public static double parseDouble(String strDouble) {
         // Raises error message if string is empty or null.
