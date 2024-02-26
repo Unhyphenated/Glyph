@@ -8,6 +8,25 @@ import java.util.Map;
 import static com.craftinginterpreters.lox.TokenType.*;
 
 class Scanner {
+    private static final Map<String, TokenType> keywords;
+    static {
+        keywords = new HashMap<>();
+        keywords.put("and", AND);
+        keywords.put("or", OR);
+        keywords.put("class", CLASS);
+        keywords.put("else", ELSE);
+        keywords.put("if", IF);
+        keywords.put("false", FALSE);
+        keywords.put("true", TRUE);
+        keywords.put("nil", NIL);
+        keywords.put("while", WHILE);
+        keywords.put("super", SUPER);
+        keywords.put("print", RETURN);
+        keywords.put("this", THIS);
+        keywords.put("var", VAR);
+        keywords.put("for", FOR);
+        keywords.put("fun", FUN);
+    }
     private final String source;
     private final List<Token> tokens = new ArrayList<>();
     private int start = 0; // Indicates the start of a line
@@ -83,8 +102,13 @@ class Scanner {
         }
     }
 
-    private identifier() {
-        
+    private void identifier() {
+        while(isAlphaNumeric(peek())) advance();
+
+        String word = source.substring(start, current);
+        TokenType type = keywords.get(word);
+        type = type == null ? IDENTIFIER : type;
+        addToken(type);
     }
 
     private char advance() {
@@ -173,5 +197,9 @@ class Scanner {
 
     private boolean isAlpha(char c) {
         return (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_');
+    }
+
+    private boolean isAlphaNumeric(char c) {
+        return isAlpha(c) || isDigit(c);
     }
 }
