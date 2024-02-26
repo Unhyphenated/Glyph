@@ -8,6 +8,7 @@ import java.util.Map;
 import static com.craftinginterpreters.lox.TokenType.*;
 
 class Scanner {
+    // Hash map of reserved keywords.
     private static final Map<String, TokenType> keywords;
     static {
         keywords = new HashMap<>();
@@ -29,16 +30,16 @@ class Scanner {
     }
     private final String source;
     private final List<Token> tokens = new ArrayList<>();
-    private int start = 0; // Indicates the start of a line
-    private int current = 0; // Indicates the current character
-    private int line = 1; // Indicates the current line being scanned
+    private int start = 0; // Indicates the start of a line.
+    private int current = 0; // Indicates the current character.
+    private int line = 1; // Indicates the current line being scanned.
 
     Scanner(String source) {
         this.source = source;
     }
 
     List<Token> scanTokens() {
-        // Scans each char and appends all tokens to an ArrayList
+        // Scans each char and appends all tokens to an ArrayList.
         while (!isAtEnd()) {
             start = current;
             scanToken();
