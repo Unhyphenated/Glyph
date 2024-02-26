@@ -74,11 +74,17 @@ class Scanner {
             default: 
                 if (isDigit(c)) {
                     number();
+                } else if (isAlpha(c)) {
+                    identifier();
                 } else {
                     Lox.error(line, "Unexpected character."); 
                 }
                 break;
         }
+    }
+
+    private identifier() {
+        
     }
 
     private char advance() {
@@ -163,5 +169,9 @@ class Scanner {
         // peekNext scans the character right after.
         if (current + 1 >= source.length()) return '\0';
         return source.charAt(current + 1);
+    }
+
+    private boolean isAlpha(char c) {
+        return (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_');
     }
 }
