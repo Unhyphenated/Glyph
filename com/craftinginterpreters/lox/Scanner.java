@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.craftinginterpreters.lox.TokenType.*;
+import static com.craftinginterpreters.lox.DoubleParser.*;
 
 class Scanner {
     // Hash map of reserved keywords.
@@ -185,7 +186,7 @@ class Scanner {
         }
 
         // Convert the string to double.
-        double value = Double.parseDouble(source.substring(start, current));
+        double value = parseDouble(source.substring(start, current));
         addToken(NUMBER, value);
     }
 
