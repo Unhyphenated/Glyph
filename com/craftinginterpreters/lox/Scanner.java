@@ -91,7 +91,6 @@ class Scanner {
                 break;
             case '"':
                 string();
-
             default: 
                 if (isDigit(c)) {
                     number();
@@ -135,7 +134,6 @@ class Scanner {
         // Consumes the current char and moves one char along the line
         if (isAtEnd()) return false;
         if (source.charAt(current++) != expected) return false;
-        
         current++;
         return true;
     }
