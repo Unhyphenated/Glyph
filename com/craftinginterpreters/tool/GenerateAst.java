@@ -20,17 +20,47 @@ public class GenerateAst {
         ));
     }
 
-    private static void defineAst(String outputDirectory, String baseClass, List<String> types) 
+    private static void defineAst(String outputDirectory, String baseName, List<String> types) 
     throws IOException{
-        String path = outputDirectory + "/" + baseClass + ".java";
+        String path = outputDirectory + "/" + baseName + ".java";
         PrintWriter writer = new PrintWriter(path, "UTF-8");
 
         writer.println("package.com/craftinginterpreters/lox;");
         writer.println();
         writer.println("import java.util.List;");
         writer.println();
-        writer.println("abstract class " + baseClass + " {");
+        writer.println("abstract class " + baseName + " {");
+        for (String type: types) {
+            String className = type.split(":")[0].trim();
+            String fields = type.split(":")[1].trim();
+            defineType(writer, baseName, className, fields);
+        }
         writer.println("}");
         writer.close();
+    }
+
+    private static void defineType(PrintWriter writer, String baseName, String className, 
+    String fieldList) {
+        writer.println(" static class" + className + " extends " + baseName + " {");
+
+        // Constructor class line
+        writer.println("    " + className + "(" + fieldList + ")" + "{");
+
+        // Obtain each attribute 
+        String[] fields = fieldList.split(", ");
+
+        for (String field: fields) {
+            String name = field.split(" ")[1];
+            writer.println("    this." + name + " = " + name + ";");
+        }
+
+        writer.println("        }");
+
+        writer.println();
+        for (String field: fields) {
+            writer.println("    final " + field + ";");
+        }
+
+        writer.println("    }");
     }
 }
