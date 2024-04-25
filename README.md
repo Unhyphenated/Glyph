@@ -1,4 +1,4 @@
 # Glyph
-A personal learning project based on the book "Crafting Interpreters" by Robert Nystrom.
-The goal is to get through the first section of the book implementing an interpreter for Lox.
-Any following objectives or improvements will be detailed here.
+A lightweight text editor inspired by antirez's kilo. 
+https://viewsourcecode.org/snaptoken/kilo/ is used as a guide.
+I will be implementing this in C++.
