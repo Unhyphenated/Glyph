@@ -19,7 +19,7 @@ void enableRawMode() {
 
     // Disable 'Ctrl-S' and 'Ctrl-Q'
     // ICRNL stops terminal from translating new lines / carriage returns
-    raw.c_iflag &= ~(ICRNL | IXON);
+    raw.c_iflag &= ~(BRKINT | ICRNL | IXON | INPCK | ISTRIP);
 
     // Disable carriage returns and newlines when 'Enter' is pressed
     raw.c_oflag &= ~(OPOST);
@@ -29,6 +29,7 @@ void enableRawMode() {
         // ISIG is used to disable 'Ctrl-Z' and 'Ctrl-C' suspensions
         // IEXTEN disables 'Ctrl-V' and 'Ctrl-O'
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
+    raw.c_cflag |= (CS8);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
