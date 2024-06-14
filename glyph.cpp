@@ -21,6 +21,8 @@ void enableRawMode() {
     // ICRNL stops terminal from translating new lines / carriage returns
     raw.c_iflag &= ~(ICRNL | IXON);
 
+    // Disable carriage returns and newlines when 'Enter' is pressed
+    raw.c_oflag &= ~(OPOST);
     // Set the 'ECHO' bitflag to 0 
         // ICANON is used to disable canonical mode allowing byte-by-byte
         // reading instead of the standard line-by-line
@@ -38,9 +40,9 @@ int main() {
     // and it's ASCII value
     while (read(STDERR_FILENO, &c, 1) == 1 && c != 'q') {
         if (!iscntrl(c)) {
-            printf("%d : %c\n", c, c);
+            printf("%d\r\n : %c\n", c, c);
         } else {
-            printf("%d\n", c);
+            printf("%d : '%c'\r\n", c, c);
         }
     };
     return 0;
