@@ -17,10 +17,16 @@ void enableRawMode() {
     // Create a reference to the original termios
     struct termios raw = original_termios;
 
+    // Disable 'Ctrl-S' and 'Ctrl-Q'
+    // ICRNL stops terminal from translating new lines / carriage returns
+    raw.c_iflag &= ~(ICRNL | IXON);
+
     // Set the 'ECHO' bitflag to 0 
         // ICANON is used to disable canonical mode allowing byte-by-byte
         // reading instead of the standard line-by-line
-    raw.c_lflag &= ~(ECHO | ICANON);
+        // ISIG is used to disable 'Ctrl-Z' and 'Ctrl-C' suspensions
+        // IEXTEN disables 'Ctrl-V' and 'Ctrl-O'
+    raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
