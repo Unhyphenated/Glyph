@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define CTRL_KEY(k) ((k) & 0x1f)
+
 /*** Data ***/
 struct termios original_termios;
 
@@ -48,22 +50,33 @@ void enableRawMode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
-/*** Init ***/
+char editorReadKey() {
+    int nread;
+    char c;
+    while ((nread = read(STDIN_FILENO, &c, 1)) != -1) {
+        if (nread == -1 && errno != EAGAIN) die("read");
+    }
+    return c;
+}
 
+void editorProcessKey() {
+    char c = editorReadKey();
+
+    // Quit the program when 'Ctrl-Q' is used
+    switch(c) {
+        case CTRL_KEY('q'):
+            exit(0);
+            break;
+    }
+}
+/*** Init ***/
 int main() {
     enableRawMode();
 
     // Quit terminal when 'q' is typed. Otherwise, display the the character
     // and it's ASCII value
     while (1) {
-        char c = '\0';
-        if (read(STDIN_FILENO, &c, 1) == -1 && errno == EAGAIN) die("read");
-        if (!iscntrl(c)) {
-            printf("%d\r\n : %c\n", c, c);
-        } else {
-            printf("%d : '%c'\r\n", c, c);
-        }
-        if (c == 'q') break;
+       
     }
 
     return 0;
