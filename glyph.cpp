@@ -19,7 +19,7 @@ void die(const char *s) {
 
 /*** Terminal ***/
 void disableRawMode() {
-    if (tcsetattr(STDERR_FILENO, TCSAFLUSH, &original_termios) == -1) die("tcsetattr");
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) == -1) die("tcsetattr");
 }
 
 void enableRawMode() {
@@ -50,10 +50,11 @@ void enableRawMode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
+/*** Input ***/
 char editorReadKey() {
     int nread;
     char c;
-    while ((nread = read(STDIN_FILENO, &c, 1)) != -1) {
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
         if (nread == -1 && errno != EAGAIN) die("read");
     }
     return c;
@@ -69,6 +70,12 @@ void editorProcessKey() {
             break;
     }
 }
+
+/*** Output ***/
+void editorRefreshScreen() {
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+}
+
 /*** Init ***/
 int main() {
     enableRawMode();
@@ -76,7 +83,8 @@ int main() {
     // Quit terminal when 'q' is typed. Otherwise, display the the character
     // and it's ASCII value
     while (1) {
-       
+        editorRefreshScreen();
+        editorProcessKey();
     }
 
     return 0;
