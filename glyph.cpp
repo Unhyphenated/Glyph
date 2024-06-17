@@ -9,9 +9,15 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 /*** Data ***/
-struct termios original_termios;
+struct editorConfig {
+  struct termios original_termios;
+};
+
+struct editorConfig E;
 
 void die(const char *s) {
+    write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
+    write(STDOUT_FILENO, "\x1b[H", 3); // Repositions the cursor
     // Display error message based on global errno variable
     perror(s);
     exit(1);
@@ -19,16 +25,16 @@ void die(const char *s) {
 
 /*** Terminal ***/
 void disableRawMode() {
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) == -1) die("tcsetattr");
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.original_termios) == -1) die("tcsetattr");
 }
 
 void enableRawMode() {
     // Get the terminal attributes of a standard terminal
-    if (tcgetattr(STDIN_FILENO, &original_termios) == -1) die("tcgetattr");
+    if (tcgetattr(STDIN_FILENO, &E.original_termios) == -1) die("tcgetattr");
     atexit(disableRawMode);
 
     // Create a reference to the original termios
-    struct termios raw = original_termios;
+    struct termios raw = E.original_termios;
 
     // Disable 'Ctrl-S' and 'Ctrl-Q'
     // ICRNL stops terminal from translating new lines / carriage returns
@@ -55,6 +61,8 @@ char editorReadKey() {
     int nread;
     char c;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
+        write(STDOUT_FILENO, "\x1b[H", 3); // Repositions the cursor
         if (nread == -1 && errno != EAGAIN) die("read");
     }
     return c;
@@ -72,8 +80,18 @@ void editorProcessKey() {
 }
 
 /*** Output ***/
+void editorDrawRows();
 void editorRefreshScreen() {
-    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
+    write(STDOUT_FILENO, "\x1b[H", 3); // Repositions the cursor
+    editorDrawRows();
+    write(STDOUT_FILENO, "\x1b[H", 3); // Repositions the cursor
+}
+
+void editorDrawRows() {
+    for (int y = 0; y < 24; y++) {
+        write(STDOUT_FILENO, "~\r\n", 3);
+    }
 }
 
 /*** Init ***/
@@ -82,10 +100,10 @@ int main() {
 
     // Quit terminal when 'q' is typed. Otherwise, display the the character
     // and it's ASCII value
-    while (1) {
-        editorRefreshScreen();
-        editorProcessKey();
-    }
+    // while (1) {
+    editorRefreshScreen();
+    editorProcessKey();
+    // }
 
     return 0;
 }
