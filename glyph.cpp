@@ -11,6 +11,8 @@
 
 /*** Data ***/
 struct editorConfig {
+    int screenrows;
+    int screencols;
   struct termios original_termios;
 };
 
@@ -90,7 +92,7 @@ void editorRefreshScreen() {
 }
 
 void editorDrawRows() {
-    for (int y = 0; y < 24; y++) {
+    for (int y = 0; y < E.screenrows; y++) {
         write(STDOUT_FILENO, "~\r\n", 3);
     }
 }
@@ -107,8 +109,13 @@ int getWindowSize(int *rows, int *cols) {
 }
 
 /*** Init ***/
+void initEditor() {
+    if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+}
+
 int main() {
     enableRawMode();
+    initEditor();
 
     // Quit terminal when 'q' is typed. Otherwise, display the the character
     // and it's ASCII value
