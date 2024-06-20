@@ -83,7 +83,7 @@ void editorProcessKey() {
 }
 
 /*** Output ***/
-void editorDrawRows();
+void editorDrawRows(); // Initialise function that will be defined later (this causes an error is omitted)
 void editorRefreshScreen() {
     write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
     write(STDOUT_FILENO, "\x1b[H", 3); // Repositions the cursor
@@ -97,10 +97,28 @@ void editorDrawRows() {
     }
 }
 
+int getCursorPosition(int *rows, int *cols) {
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+
+    printf("\r\n");
+    char c;
+    while ((read(STDIN_FILENO, &c, 1)) != 1) {
+        if (iscntrl(c)) {
+            printf("%d\r\n", c);
+        } else {
+            printf("%d ('%c')\r\n", c, c);
+        }
+    }
+
+    editorReadKey();
+    return -1;
+}
+
 int getWindowSize(int *rows, int *cols) {
     struct winsize ws;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-        return -1;
+    if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+        return getCursorPosition(rows, cols);
     } else {
         *cols = ws.ws_col;
         *rows = ws.ws_row;
