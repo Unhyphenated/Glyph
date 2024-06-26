@@ -6,7 +6,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/ioctl.h>
-
+#include <string.h>
+#include <vector>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -92,13 +93,15 @@ void editorRefreshScreen() {
     write(STDOUT_FILENO, "\x1b[H", 3); // Repositions the cursor
 }
 
-void editorDrawRows() {
-    for (int y = 0; y < E.screenrows; y++) {
+void editorDrawRows(class Abuf ab) {
+    int y;
+    for (y = 0; y < E.screenrows; y++) {
+
         if (y == E.screenrows - 1) {
-            write(STDOUT_FILENO, "~", 1);
+            ab.append("~", 1);
             break;
         }
-        write(STDOUT_FILENO, "~\r\n", 3);
+        ab.append("~\r\n", 3);
     }
 }
 
@@ -134,14 +137,21 @@ int getWindowSize(int *rows, int *cols) {
 }
 
 /*** Append Buffer ***/
-// class abuf {
-//     public:
-//         char *b;
-//         int len;
+class Abuf {
+    private:
+        std::vector<char> buffer;
 
-//         void abAppend(class abuf *ab, )
-// };
+    public:
+        Abuf() = default;
 
+        void append(const char* s, int len) {
+            if (s == nullptr || len <= 0) return;
+            buffer.insert(buffer.end(), s, s + len);
+        }
+
+        // Destructor - vector handles its own memory cleanup
+        ~Abuf() = default;
+};
 
 
 /*** Init ***/
