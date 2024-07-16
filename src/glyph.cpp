@@ -107,6 +107,12 @@ void editorDrawRows(Abuf& ab) {
             int welcomelen = snprintf(welcome, sizeof(welcome),
                 "Glyph Editor -- version %s", GLYPH_VERSION);
             if (welcomelen > E.screencols) welcomelen = E.screencols;
+            int padding = (E.screencols - welcomelen) / 2;
+            if (padding) {
+                ab.append("~", 1);
+                padding--;
+            }
+            while (padding--) ab.append(" ", 1);
             ab.append(welcome, welcomelen);
         } else {
             ab.append("~", 1);
