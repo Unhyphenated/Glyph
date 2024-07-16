@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <string.h>
 #include <vector>
 #include "Abuf.h"
@@ -26,12 +27,19 @@ enum cursorKeys {
     DEL_KEY
 };
 
+typedef struct erow {
+    int size;
+    char *chars;
+} erow;
+
 /*** Data ***/
 struct editorConfig {
     int cx, cy;
     int screenrows;
     int screencols;
-  struct termios original_termios;
+    int numrows;
+    erow row;
+    struct termios original_termios;
 };
 
 struct editorConfig E;
@@ -205,20 +213,26 @@ void editorRefreshScreen() {
 void editorDrawRows(Abuf& ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
-        if (y == E.screenrows / 3) {
-            char welcome[80];
-            int welcomelen = snprintf(welcome, sizeof(welcome),
-                "Glyph Editor -- version %s", GLYPH_VERSION);
-            if (welcomelen > E.screencols) welcomelen = E.screencols;
-            int padding = (E.screencols - welcomelen) / 2;
-            if (padding) {
+        if (y >= E.numrows) {
+            if (y == E.screenrows / 3) {
+                char welcome[80];
+                int welcomelen = snprintf(welcome, sizeof(welcome),
+                    "Glyph Editor -- version %s", GLYPH_VERSION);
+                if (welcomelen > E.screencols) welcomelen = E.screencols;
+                int padding = (E.screencols - welcomelen) / 2;
+                if (padding) {
+                    ab.append("~", 1);
+                    padding--;
+                }
+                while (padding--) ab.append(" ", 1);
+                ab.append(welcome, welcomelen);
+            } else {
                 ab.append("~", 1);
-                padding--;
             }
-            while (padding--) ab.append(" ", 1);
-            ab.append(welcome, welcomelen);
         } else {
-            ab.append("~", 1);
+            int len = E.row.size;
+            if (len > E.screencols) len = E.screencols;
+            ab.append(E.row.chars, len);
         }
 
         ab.append("\x1b[K", 3);
@@ -257,16 +271,41 @@ int getWindowSize(int *rows, int *cols) {
     }
 }
 
+void openEditor(char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) die ("fopen");
+
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+    linelen = getline(&line, &linecap, fp);
+
+    if (linelen != -1) {
+        while (linelen > 0 && line[linelen - 1] == '\r' || line[linelen - 1] == '\n') linelen--;
+        E.row.size = linelen;
+        E.row.chars = (char* )malloc(linelen + 1);
+        memcpy(E.row.chars, line, linelen);
+        E.row.chars[linelen] = '\0';
+        E.numrows = 1;
+    }
+    free(line);
+    fclose(fp);
+}
+
 /*** Init ***/
 void initEditor() {
     E.cx = 0;
     E.cy = 0;
+    E.numrows = 0;
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     enableRawMode();
     initEditor();
+    if (argc >= 2) {
+        openEditor(argv[1]);
+    }
 
     // Quit terminal when 'q' is typed.
     while (1) {
