@@ -22,7 +22,8 @@ enum cursorKeys {
     PAGE_UP,
     PAGE_DOWN,
     HOME_KEY,
-    END_KEY
+    END_KEY,
+    DEL_KEY
 };
 
 /*** Data ***/
@@ -95,6 +96,7 @@ int editorReadKey() {
                     switch (seq[1]) {
                         case '1': return HOME_KEY;
                         case '2': return END_KEY;
+                        case '3': return DEL_KEY;
                         case '5': return PAGE_UP;
                         case '6': return PAGE_DOWN;
                         case '7': return HOME_KEY;
@@ -165,7 +167,7 @@ void editorProcessKey() {
         case END_KEY:
             E.cx = E.screencols - 1;
             break;
-            
+
         case PAGE_UP:
         case PAGE_DOWN:
             {
