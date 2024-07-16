@@ -14,8 +14,16 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define GLYPH_VERSION "0.0.1"
 
+enum cursorKeys {
+    ARROW_UP = 'w',
+    ARROW_LEFT = 'a',
+    ARROW_DOWN = 's',
+    ARROW_RIGHT = 'd'
+};
+
 /*** Data ***/
 struct editorConfig {
+    int cx, cy;
     int screenrows;
     int screencols;
   struct termios original_termios;
@@ -69,20 +77,60 @@ char editorReadKey() {
     int nread;
     char c;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
-        // write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
-        write(STDOUT_FILENO, "\x1b[H", 3); // Repositions the cursor
         if (nread == -1 && errno != EAGAIN) die("read");
     }
-    return c;
+
+    if (c == '\x1b') {
+        char seq[3];
+        if (read(STDIN_FILENO, &seq[0], 1) != 1 || read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+        
+        if (seq[0] == '[') {
+            switch(seq[1]) {
+                case 'A': return ARROW_UP;
+                case 'B': return ARROW_DOWN;
+                case 'C': return ARROW_RIGHT;
+                case 'D': return ARROW_LEFT;
+            }
+        }
+        return '\x1b';
+    } else {
+        return c;
+    }
+}
+
+void editorMoveCursor(char key) {
+    switch (key) {
+        case 'w':
+            E.cy--;
+            break;
+        case 'a':
+            E.cx--;
+            break;
+        case 's':
+            E.cy++;
+            break;
+        case 'd':
+            E.cx++;
+            break;
+    }
 }
 
 void editorProcessKey() {
     char c = editorReadKey();
 
-    // Quit the program when 'Ctrl-Q' is used
     switch(c) {
+        // Quit the program when 'Ctrl-Q' is used
         case CTRL_KEY('q'):
+            // write(STDOUT_FILENO, "\x1b[2J", 4);
+            // write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
+            break;
+        // Move cursor using "WASD"
+        case 'w':
+        case 'a':
+        case 's':
+        case 'd':
+            editorMoveCursor(c);
             break;
     }
 }
@@ -94,7 +142,11 @@ void editorRefreshScreen() {
     AB.append("\x1b[?25l", 6); // Erase cursor
     AB.append("\x1b[H", 3); // Repositions the cursor
     editorDrawRows(AB);
-    AB.append("\x1b[H", 3); // Repositions the cursor
+    
+    char buf[32];
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+    AB.append(buf, strlen(buf));
+
     AB.append("\x1b[?25h", 6); // Draws cursor
     write(STDOUT_FILENO, AB.data(), AB.size());
 }
@@ -156,6 +208,8 @@ int getWindowSize(int *rows, int *cols) {
 
 /*** Init ***/
 void initEditor() {
+    E.cx = 0;
+    E.cy = 0;
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
