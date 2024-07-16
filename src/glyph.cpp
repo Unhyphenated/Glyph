@@ -15,10 +15,10 @@
 #define GLYPH_VERSION "0.0.1"
 
 enum cursorKeys {
-    ARROW_UP = 'w',
-    ARROW_LEFT = 'a',
-    ARROW_DOWN = 's',
-    ARROW_RIGHT = 'd'
+    ARROW_UP = 1000,
+    ARROW_LEFT,
+    ARROW_DOWN,
+    ARROW_RIGHT
 };
 
 /*** Data ***/
@@ -73,7 +73,7 @@ void enableRawMode() {
 }
 
 /*** Input ***/
-char editorReadKey() {
+int editorReadKey() {
     int nread;
     char c;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -98,38 +98,38 @@ char editorReadKey() {
     }
 }
 
-void editorMoveCursor(char key) {
+void editorMoveCursor(int key) {
     switch (key) {
-        case 'w':
+        case ARROW_UP:
             E.cy--;
             break;
-        case 'a':
+        case ARROW_LEFT:
             E.cx--;
             break;
-        case 's':
+        case ARROW_DOWN:
             E.cy++;
             break;
-        case 'd':
+        case ARROW_RIGHT:
             E.cx++;
             break;
     }
 }
 
 void editorProcessKey() {
-    char c = editorReadKey();
+    int c = editorReadKey();
 
     switch(c) {
         // Quit the program when 'Ctrl-Q' is used
         case CTRL_KEY('q'):
-            // write(STDOUT_FILENO, "\x1b[2J", 4);
-            // write(STDOUT_FILENO, "\x1b[H", 3);
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
         // Move cursor using "WASD"
-        case 'w':
-        case 'a':
-        case 's':
-        case 'd':
+        case ARROW_UP:
+        case ARROW_LEFT:
+        case ARROW_DOWN:
+        case ARROW_RIGHT:
             editorMoveCursor(c);
             break;
     }
