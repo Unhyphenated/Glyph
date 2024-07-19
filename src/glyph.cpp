@@ -228,6 +228,16 @@ int editorRowCxToRx(erow *row, int cx) {
 }
 
 /*** Output ***/
+void editorDrawStatusBar(Abuf& ab) {
+    ab.append("\x1b7m", 4);
+    int len = 0;
+    while (len < E.screencols) {
+        len++;
+        ab.append(" ", 1);
+    }
+    ab.append("\x1b[m", 3);
+
+}
 void editorScroll() {
     E.rx = 0;
     if (E.cy < E.numrows) {
@@ -245,6 +255,7 @@ void editorRefreshScreen() {
     AB.append("\x1b[?25l", 6); // Erase cursor
     AB.append("\x1b[H", 3); // Repositions the cursor
     editorDrawRows(AB);
+    editorDrawStatusBar(AB);
     
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy - E.rowoff + 1, E.rx - E.coloff + 1);
@@ -259,7 +270,7 @@ void editorDrawRows(Abuf& ab) {
     for (y = 0; y < E.screenrows; y++) {
         int filerow = y + E.rowoff;
         if (filerow >= E.numrows) {
-            if (E.numrows == 0 && y == E.screenrows / 3) {
+            if (E.numrows == 0 && y == E.screenrows / 2) {
                 char welcome[80];
                 int welcomelen = snprintf(welcome, sizeof(welcome),
                     "Glyph Editor -- version %s", GLYPH_VERSION);
@@ -282,7 +293,7 @@ void editorDrawRows(Abuf& ab) {
         }
 
         ab.append("\x1b[K", 3);
-        if (y < E.screenrows - 1) ab.append("\r\n", 2);
+        ab.append("\r\n", 2);
     }
 }
 
@@ -379,6 +390,7 @@ void initEditor() {
     E.rowoff = 0;
     E.coloff = 0;
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+    E.screenrows--;
 }
 
 int main(int argc, char *argv[]) {
