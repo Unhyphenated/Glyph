@@ -229,7 +229,7 @@ int editorRowCxToRx(erow *row, int cx) {
 
 /*** Output ***/
 void editorDrawStatusBar(Abuf& ab) {
-    ab.append("\x1b7m", 4);
+    ab.append("\x1b[7m", 4);
     int len = 0;
     while (len < E.screencols) {
         len++;
