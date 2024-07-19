@@ -232,17 +232,23 @@ int editorRowCxToRx(erow *row, int cx) {
 /*** Output ***/
 void editorDrawStatusBar(Abuf& ab) {
     ab.append("\x1b[7m", 4);
-    char status[80];
+    char status[80], rstatus[80];
     int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[Untitled]", E.numrows);
     if (len > E.screencols) len = E.screencols;
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d %d", E.cy + 1, E.numrows);
     ab.append(status, len);
     while (len < E.screencols) {
-        len++;
-        ab.append(" ", 1);
+        if (E.screencols - len == rlen) {
+            ab.append(rstatus, rlen);
+            break;
+        } else {
+            len++;
+            ab.append(" ", 1);
+        }
     }
     ab.append("\x1b[m", 3);
-
 }
+
 void editorScroll() {
     E.rx = 0;
     if (E.cy < E.numrows) {
