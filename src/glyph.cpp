@@ -19,6 +19,7 @@
 #define GLYPH_TAB_STOP 8
 
 enum cursorKeys {
+    BACKSPACE = 127,
     ARROW_UP = 1000,
     ARROW_LEFT,
     ARROW_DOWN,
@@ -27,7 +28,7 @@ enum cursorKeys {
     PAGE_DOWN,
     HOME_KEY,
     END_KEY,
-    DEL_KEY
+    DEL_KEY,
 };
 
 typedef struct erow {
@@ -96,6 +97,7 @@ void enableRawMode() {
 }
 
 /*** Input ***/
+void editorInsertChar(int c);
 int editorReadKey() {
     int nread;
     char c;
@@ -180,11 +182,18 @@ void editorProcessKey() {
     int c = editorReadKey();
 
     switch(c) {
+        case '\r':
+            break;
         // Quit the program when 'Ctrl-Q' is used
         case CTRL_KEY('q'):
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
+            break;
+
+        case BACKSPACE:
+        case DEL_KEY:
+        case CTRL_KEY('h'):
             break;
         
         case HOME_KEY: 
@@ -211,12 +220,19 @@ void editorProcessKey() {
             }
             break;
 
+        case CTRL_KEY('l'):
+        case '\x1b':
+            break;
+
         // Move cursor using "WASD"
         case ARROW_UP:
         case ARROW_LEFT:
         case ARROW_DOWN:
         case ARROW_RIGHT:
             editorMoveCursor(c);
+            break;
+        default:
+            editorInsertChar(c);
             break;
     }
 }
@@ -394,6 +410,25 @@ void editorAppendRow(char *s, size_t len) {
     E.row[at].render = NULL;
     editorUpdateRow(&E.row[at]);
     E.numrows++;
+}
+
+/*** Editor Operations ***/
+void editorRowInsertChar(erow *row, int at, int c) {
+    if (at < 0 || at > row -> size) at = row -> size;
+    row -> chars = (char *)realloc(row -> chars, row -> size + 2);
+    memmove(&row -> chars[at + 1], &row -> chars[at], row -> size - at + 1);
+    row -> size++;
+    row -> chars[at] = c;
+    editorUpdateRow(row);
+}
+
+void editorInsertChar(int c) {
+    char* emptyRow;
+    if (E.cy == E.numrows) {
+        editorAppendRow(emptyRow, 0);
+    }
+    editorRowInsertChar(&E.row[E.cy], E.cx, c);
+    E.cx++;
 }
 
 void openEditor(char *filename) {
