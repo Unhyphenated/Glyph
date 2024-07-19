@@ -11,6 +11,7 @@
 #include <vector>
 #include "Abuf.h"
 #include <iostream>
+#include <string>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define GLYPH_VERSION "0.0.1"
@@ -44,6 +45,7 @@ struct editorConfig {
     int screencols;
     int numrows;
     erow *row;
+    char *filename;
     struct termios original_termios;
 };
 
@@ -230,7 +232,10 @@ int editorRowCxToRx(erow *row, int cx) {
 /*** Output ***/
 void editorDrawStatusBar(Abuf& ab) {
     ab.append("\x1b[7m", 4);
-    int len = 0;
+    char status[80];
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[Untitled]", E.numrows);
+    if (len > E.screencols) len = E.screencols;
+    ab.append(status, len);
     while (len < E.screencols) {
         len++;
         ab.append(" ", 1);
@@ -366,6 +371,9 @@ void editorAppendRow(char *s, size_t len) {
 }
 
 void openEditor(char *filename) {
+    free(E.filename);
+    E.filename = strdup(filename);
+
     FILE *fp = fopen(filename, "r");
     if (!fp) die ("fopen");
 
@@ -389,6 +397,7 @@ void initEditor() {
     E.row = NULL;
     E.rowoff = 0;
     E.coloff = 0;
+    E.filename = NULL;
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
     E.screenrows--;
 }
