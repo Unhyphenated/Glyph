@@ -7,11 +7,12 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
-#include <string.h>
 #include <vector>
+#include <time.h>
 #include "Abuf.h"
 #include <iostream>
 #include <string>
+#include <stdarg.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define GLYPH_VERSION "0.0.1"
@@ -46,6 +47,8 @@ struct editorConfig {
     int numrows;
     erow *row;
     char *filename;
+    char statusmsg[80];
+    time_t statusmsg_time;
     struct termios original_termios;
 };
 
@@ -247,6 +250,22 @@ void editorDrawStatusBar(Abuf& ab) {
         }
     }
     ab.append("\x1b[m", 3);
+    ab.append("\r\n", 2);
+}
+
+void editorDrawStatusMessage(Abuf& ab) {
+    ab.append("\x1b[K", 3);
+    int len = strlen(E.statusmsg);
+    if (len > E.screencols) len = E.screencols;
+    if (len && time(NULL) - E.statusmsg_time < 5) ab.append(E.statusmsg, len);
+}
+
+void editorSetStatusMessage(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
+    va_end(ap);
+    E.statusmsg_time = time(NULL);
 }
 
 void editorScroll() {
@@ -267,6 +286,7 @@ void editorRefreshScreen() {
     AB.append("\x1b[H", 3); // Repositions the cursor
     editorDrawRows(AB);
     editorDrawStatusBar(AB);
+    editorDrawStatusMessage(AB);
     
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy - E.rowoff + 1, E.rx - E.coloff + 1);
@@ -404,8 +424,10 @@ void initEditor() {
     E.rowoff = 0;
     E.coloff = 0;
     E.filename = NULL;
+    E.statusmsg[0] = '\0';
+    E.statusmsg_time = 0;
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
-    E.screenrows--;
+    E.screenrows -= 2;
 }
 
 int main(int argc, char *argv[]) {
@@ -414,6 +436,7 @@ int main(int argc, char *argv[]) {
     if (argc >= 2) {
         openEditor(argv[1]);
     }
+    editorSetStatusMessage("HELP: Ctrl-Q = Quit");
 
     // Quit terminal when 'q' is typed.
     while (1) {
