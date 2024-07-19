@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <stdarg.h>
+#include <fcntl.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define GLYPH_VERSION "0.0.1"
@@ -98,6 +99,7 @@ void enableRawMode() {
 
 /*** Input ***/
 void editorInsertChar(int c);
+void editorSave();
 int editorReadKey() {
     int nread;
     char c;
@@ -218,6 +220,10 @@ void editorProcessKey() {
                 int times = E.screenrows;
                 while (times--) editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
             }
+            break;
+
+        case CTRL_KEY('s'):
+            editorSave();
             break;
 
         case CTRL_KEY('l'):
@@ -429,6 +435,36 @@ void editorInsertChar(int c) {
     }
     editorRowInsertChar(&E.row[E.cy], E.cx, c);
     E.cx++;
+}
+
+char *editorRowsToString(int *buflen) {
+    int totlen = 0;
+    for (int j = 0; j < E.numrows; j++) {
+        totlen += E.row[j].size + 1;
+    }
+    *buflen = totlen;
+    char *buf = (char *)malloc(totlen);
+    char *p = buf;
+
+    for (int i = 0; i < E.numrows; i++) {
+        memcpy(p, E.row[i].chars, E.row[i].size);
+        p += E.row[i].size;
+        *p = '\n';
+        p++;
+    }
+    return buf;
+}
+
+void editorSave() {
+    if (!E.filename) return;
+    int len;
+    char *buf = editorRowsToString(&len);
+
+    int fd = open(E.filename, O_RDWR | O_CREAT, 0644);
+    ftruncate(fd, len);
+    write(fd, buf, len);
+    close(fd);
+    free(buf);
 }
 
 void openEditor(char *filename) {
