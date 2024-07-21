@@ -273,7 +273,7 @@ void editorDrawStatusBar(Abuf& ab) {
     ab.append("\x1b[7m", 4);
     char status[80], rstatus[80];
 
-    int len = snprintf(status, sizeof(status), "%.20s - %d lines", 
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines %s", 
     E.filename ? E.filename : "[Untitled]", E.numrows,
     E.dirty ? "(modified)" : "");
     
@@ -481,11 +481,28 @@ void editorRowDelChar(erow *row, int at) {
 }
 
 void editorInsertChar(int c) {
+    char *emptyRow;
     if (E.cy == E.numrows) {
-        editorInsertRow(E.numrows, "", 0);
+        editorInsertRow(E.numrows, emptyRow, 0);
     }
     editorRowInsertChar(&E.row[E.cy], E.cx, c);
     E.cx++;
+}
+
+void editorInsertNewLine() {
+    char *emptyRow;
+    if (E.cx == 0) {
+        editorInsertRow(E.cy, emptyRow, 0);
+    } else {
+        erow *row = &E.row[E.cy];
+        editorInsertRow(E.cy + 1, &row -> chars[E.cx], row -> size - E.cx);
+        row = &E.row[E.cy];
+        row -> size = E.cx;
+        row -> chars[E.cx] = '\0';
+        editorUpdateRow(row);
+    }
+    E.cy++;
+    E.cx = 0;
 }
 
 void editorDelChar() {
