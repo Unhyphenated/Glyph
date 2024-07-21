@@ -62,6 +62,7 @@ void editorDelChar();
 void editorInsertNewLine();
 char *editorPrompt(char *prompt);
 int editorReadKey();
+void editorRefreshScreen();
 
 void die(const char *s) {
     write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
@@ -108,7 +109,7 @@ void enableRawMode() {
 void editorInsertChar(int c);
 void editorSave();
 
-char *editorPrompt(char *prompt) {
+char *editorPrompt(const char *prompt) {
     size_t bufsize = 128;
     char *buf = (char *)malloc(bufsize);
 
@@ -579,8 +580,8 @@ char *editorRowsToString(int *buflen) {
 }
 
 void editorSave() {
-    if (!E.filename) {
-        E.filename = editorPrompt("Save as: %s");
+    if (E.filename == NULL) {
+        E.filename = editorPrompt("Save as: %s (ESC to cancel)");
         if (E.filename == NULL) {
             editorSetStatusMessage("Save aborted");
             return;
