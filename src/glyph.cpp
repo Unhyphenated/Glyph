@@ -61,6 +61,7 @@ void editorSetStatusMessage(const char *fmt, ...);
 void editorDelChar();
 void editorInsertNewLine();
 char *editorPrompt(char *prompt);
+int editorReadKey();
 
 void die(const char *s) {
     write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
@@ -119,7 +120,9 @@ char *editorPrompt(char *prompt) {
         editorRefreshScreen();
         
         int c = editorReadKey();
-        if (c == '\x1b') {
+        if (c == DEL_KEY || c == CTRL_KEY('h') || c == END_KEY) {
+            if (buflen != 0) buf[--buflen] = '\0';
+        } else if (c == '\x1b') {
             editorSetStatusMessage("");
             free(buf);
             return NULL;
@@ -578,7 +581,10 @@ char *editorRowsToString(int *buflen) {
 void editorSave() {
     if (!E.filename) {
         E.filename = editorPrompt("Save as: %s");
-        return;
+        if (E.filename == NULL) {
+            editorSetStatusMessage("Save aborted");
+            return;
+        }
     }
     int len;
     char *buf = editorRowsToString(&len);
