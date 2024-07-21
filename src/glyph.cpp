@@ -18,6 +18,7 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define GLYPH_VERSION "0.0.1"
 #define GLYPH_TAB_STOP 8
+#define GLYPH_QUIT_COUNT 3
 
 enum cursorKeys {
     BACKSPACE = 127,
@@ -47,6 +48,7 @@ struct editorConfig {
     int screenrows;
     int screencols;
     int numrows;
+    int dirty;
     erow *row;
     char *filename;
     char statusmsg[80];
@@ -55,6 +57,8 @@ struct editorConfig {
 };
 
 struct editorConfig E;
+void editorSetStatusMessage(const char *fmt, ...);
+void editorDelChar();
 
 void die(const char *s) {
     write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
@@ -181,6 +185,7 @@ void editorMoveCursor(int key) {
 }
 
 void editorProcessKey() {
+    static int quit_count = GLYPH_QUIT_COUNT;
     int c = editorReadKey();
 
     switch(c) {
@@ -188,6 +193,12 @@ void editorProcessKey() {
             break;
         // Quit the program when 'Ctrl-Q' is used
         case CTRL_KEY('q'):
+            if (E.dirty && quit_count > 0) {
+                editorSetStatusMessage("WARNING!!! File has unsaved changes. "
+                "Press Ctrl-Q %d more times to quit.", quit_count);
+                quit_count--;
+                return;
+            }
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
@@ -196,6 +207,8 @@ void editorProcessKey() {
         case BACKSPACE:
         case DEL_KEY:
         case CTRL_KEY('h'):
+            if (c == DEL_KEY) editorMoveCursor(ARROW_RIGHT);
+            editorDelChar();
             break;
         
         case HOME_KEY: 
@@ -241,6 +254,7 @@ void editorProcessKey() {
             editorInsertChar(c);
             break;
     }
+    quit_count = GLYPH_QUIT_COUNT;
 }
 
 int editorRowCxToRx(erow *row, int cx) {
@@ -258,7 +272,11 @@ int editorRowCxToRx(erow *row, int cx) {
 void editorDrawStatusBar(Abuf& ab) {
     ab.append("\x1b[7m", 4);
     char status[80], rstatus[80];
-    int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[Untitled]", E.numrows);
+
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines", 
+    E.filename ? E.filename : "[Untitled]", E.numrows,
+    E.dirty ? "(modified)" : "");
+    
     if (len > E.screencols) len = E.screencols;
     int rlen = snprintf(rstatus, sizeof(rstatus), "%d %d", E.cy + 1, E.numrows);
     ab.append(status, len);
@@ -403,9 +421,11 @@ void editorUpdateRow(erow *row) {
     row->rsize = idx;
 }
 
-void editorAppendRow(char *s, size_t len) {
+void editorInsertRow(int at, char *s, size_t len) {
+    if (at < 0 || at > E.numrows) return;
+
     E.row = (erow* )realloc(E.row, sizeof(erow) * (E.numrows + 1));
-    int at = E.numrows;
+    memmove(&E.row[at + 1], &E.row[at], sizeof(erow) * (E.numrows + 1));
 
     E.row[at].size = len;
     E.row[at].chars = (char* )malloc(len + 1);
@@ -416,6 +436,20 @@ void editorAppendRow(char *s, size_t len) {
     E.row[at].render = NULL;
     editorUpdateRow(&E.row[at]);
     E.numrows++;
+    E.dirty++;
+}
+
+void editorFreeRow(erow *row) {
+    free(row -> render);
+    free(row -> chars);
+}
+
+void editorDelRow(int at) {
+    if (at < 0 || at >= E.numrows) return;
+    editorFreeRow(&E.row[at]);
+    memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.numrows - at - 1));
+    E.numrows--;
+    E.dirty++;
 }
 
 /*** Editor Operations ***/
@@ -426,15 +460,48 @@ void editorRowInsertChar(erow *row, int at, int c) {
     row -> size++;
     row -> chars[at] = c;
     editorUpdateRow(row);
+    E.dirty++;
+}
+
+void editorRowAppendString(erow *row, char *s, size_t len) {
+    row -> chars = (char *)realloc(row -> chars, row -> size + len + 1);
+    memcpy(&row -> chars[row -> size], s, len);
+    row -> size += len;
+    row -> chars [row -> size] = '\0';
+    editorUpdateRow(row);
+    E.dirty++;
+}
+
+void editorRowDelChar(erow *row, int at) {
+    if (at < 0 || at > row -> size)  at = row -> size;
+    memmove(&row -> chars[at], &row -> chars[at + 1], row -> size - at);
+    row -> size--;
+    editorUpdateRow(row);
+    E.dirty++;
 }
 
 void editorInsertChar(int c) {
-    char* emptyRow;
     if (E.cy == E.numrows) {
-        editorAppendRow(emptyRow, 0);
+        editorInsertRow(E.numrows, "", 0);
     }
     editorRowInsertChar(&E.row[E.cy], E.cx, c);
     E.cx++;
+}
+
+void editorDelChar() {
+    if (E.cy == E.numrows) return;
+    if (E.cx == 0 && E.cy == 0) return;
+
+    erow *row = &E.row[E.cy];
+    if (E.cx > 0) {
+        editorRowDelChar(row, E.cx - 1);
+        E.cx--;
+    } else {
+        E.cx = E.row[E.cy - 1].size;
+        editorRowAppendString(&E.row[E.cy - 1], row -> chars, row -> size);
+        editorDelRow(E.cy);
+        E.cy--;
+    }
 }
 
 char *editorRowsToString(int *buflen) {
@@ -466,12 +533,15 @@ void editorSave() {
             if (write(fd, buf, len) == len) {
                 close(fd);
                 free(buf);
+                E.dirty = 0;
+                editorSetStatusMessage("%d bytes written to disk", len);
                 return;
             }
         }
         close(fd);
     }
     free(buf);
+    editorSetStatusMessage("Saved failed! I/O error: %s", strerror(errno));
 }
 
 void openEditor(char *filename) {
@@ -486,10 +556,11 @@ void openEditor(char *filename) {
     ssize_t linelen;
     while ((linelen = getline(&line, &linecap, fp)) != -1) {
         while (linelen > 0 && line[linelen - 1] == '\r' || line[linelen - 1] == '\n') linelen--;
-        editorAppendRow(line, linelen);
+        editorInsertRow(E.numrows, line, linelen);
     }
     free(line);
     fclose(fp);
+    E.dirty = 0;
 }
 
 /*** Init ***/
@@ -504,6 +575,7 @@ void initEditor() {
     E.filename = NULL;
     E.statusmsg[0] = '\0';
     E.statusmsg_time = 0;
+    E.dirty = 0;
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
     E.screenrows -= 2;
 }
@@ -514,7 +586,7 @@ int main(int argc, char *argv[]) {
     if (argc >= 2) {
         openEditor(argv[1]);
     }
-    editorSetStatusMessage("HELP: Ctrl-Q = Quit");
+    editorSetStatusMessage("HELP: Ctrl-S = Save | Ctrl-Q = Quit");
 
     // Quit terminal when 'q' is typed.
     while (1) {
