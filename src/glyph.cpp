@@ -261,6 +261,10 @@ void editorProcessKey() {
             }
             break;
 
+        case CTRL_KEY('f'):
+            editorFind();
+            break;
+
         case PAGE_UP:
         case PAGE_DOWN:
             {
@@ -308,6 +312,17 @@ int editorRowCxToRx(erow *row, int cx) {
     return rx;
 }
 
+int editorRowRxToCx(erow *row, int rx) {
+    int cur_rx = 0;
+    int cx;
+    for (cx = 0; cx < row -> size; cx++) {
+        if (row -> chars[cx] == '\t')
+            cx += (GLYPH_TAB_STOP - 1) - (cur_rx % GLYPH_TAB_STOP);
+        cur_rx++;
+        if (cur_rx > rx) return cx;
+    }
+    return cx;
+}
 /*** Output ***/
 void editorDrawStatusBar(Abuf& ab) {
     ab.append("\x1b[7m", 4);
@@ -626,6 +641,26 @@ void openEditor(char *filename) {
     E.dirty = 0;
 }
 
+/*** Search ***/
+void editorFind() {
+    char *query = editorPrompt("Search: %s (ESC to cancel)");
+    if (query == NULL) return;
+
+    int i;
+    for (i = 0; i < E.numrows; i++) {
+        erow *row = &E.row[i];
+        char *match = strstr(row -> render, query);
+        if (match) {
+            E.cy = i;
+            E.cx = editorRowRxToCx(row, match - row -> render);
+            E.rowoff = E.numrows;
+            break;
+        }
+    }
+
+    free(query);
+}
+
 /*** Init ***/
 void initEditor() {
     E.cx = 0;
@@ -649,7 +684,7 @@ int main(int argc, char *argv[]) {
     if (argc >= 2) {
         openEditor(argv[1]);
     }
-    editorSetStatusMessage("HELP: Ctrl-S = Save | Ctrl-Q = Quit");
+    editorSetStatusMessage("HELP: Ctrl-S = Save | Ctrl-Q = Quit | Ctrl-F = Find");
 
     // Quit terminal when 'q' is typed.
     while (1) {
