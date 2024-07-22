@@ -60,9 +60,9 @@ struct editorConfig E;
 void editorSetStatusMessage(const char *fmt, ...);
 void editorDelChar();
 void editorInsertNewLine();
-char *editorPrompt(char *prompt);
 int editorReadKey();
 void editorRefreshScreen();
+char *editorPrompt(char *prompt, void (*callback)(char *, int));
 
 void die(const char *s) {
     write(STDOUT_FILENO, "\x1b[2J", 4); // Clears the screen
@@ -108,8 +108,9 @@ void enableRawMode() {
 /*** Input ***/
 void editorInsertChar(int c);
 void editorSave();
+void editorFind();
 
-char *editorPrompt(const char *prompt) {
+char *editorPrompt(const char *prompt, void (*callback)(char *, int)) {
     size_t bufsize = 128;
     char *buf = (char *)malloc(bufsize);
 
@@ -125,11 +126,13 @@ char *editorPrompt(const char *prompt) {
             if (buflen != 0) buf[--buflen] = '\0';
         } else if (c == '\x1b') {
             editorSetStatusMessage("");
+            if (callback) callback(buf, c);
             free(buf);
             return NULL;
         } else if (c == '\r') {
             if (buflen != 0) {
                 editorSetStatusMessage("");
+                if (callback) callback(buf, c);
                 return buf;
             }
         } else if (!iscntrl(c) && c < 128) {
@@ -140,6 +143,7 @@ char *editorPrompt(const char *prompt) {
             buf[buflen++] = c;
             buf[buflen] = '\0';
         }
+        if (callback) callback(buf, c);
     }
 }
 
@@ -596,7 +600,7 @@ char *editorRowsToString(int *buflen) {
 
 void editorSave() {
     if (E.filename == NULL) {
-        E.filename = editorPrompt("Save as: %s (ESC to cancel)");
+        E.filename = editorPrompt("Save as: %s (ESC to cancel)", NULL);
         if (E.filename == NULL) {
             editorSetStatusMessage("Save aborted");
             return;
@@ -642,10 +646,8 @@ void openEditor(char *filename) {
 }
 
 /*** Search ***/
-void editorFind() {
-    char *query = editorPrompt("Search: %s (ESC to cancel)");
-    if (query == NULL) return;
-
+void editorFindCallBack(char *query, int key) {
+    if (key == '\r' || key == '\x1b') return;
     int i;
     for (i = 0; i < E.numrows; i++) {
         erow *row = &E.row[i];
@@ -657,8 +659,23 @@ void editorFind() {
             break;
         }
     }
+}
 
-    free(query);
+void editorFind() {
+    int saved_cx = E.cx;
+    int saved_cy = E.cy;
+    int saved_coloff = E.coloff;
+    int saved_rowoff = E.rowoff;
+
+    char *query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallBack);
+    if (query) {
+        free(query);
+    } else {
+        E.cx = saved_cx;
+        E.cy = saved_cy;
+        E.coloff = saved_coloff;
+        E.rowoff = saved_rowoff;
+    }
 }
 
 /*** Init ***/
