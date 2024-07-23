@@ -419,7 +419,15 @@ void editorDrawRows(Abuf& ab) {
             int len = E.row[filerow].rsize - E.coloff;
             if (len < 0) len = 0;
             if (len > E.screencols) len = E.screencols;
-            ab.append(&E.row[filerow].render[E.coloff], len);
+            char *c = &E.row[filerow].render[E.coloff];
+            int j;
+            for (j = 0; j < len; j++) {
+                if (isdigit(c[j])) {
+                    ab.append("\x1b[31m", 5);
+                    ab.append(&c[j], 1);
+                    ab.append("\x1b[39m", 5);
+                }
+            }
         }
 
         ab.append("\x1b[K", 3);
