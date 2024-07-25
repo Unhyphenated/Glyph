@@ -39,6 +39,14 @@ enum editorHighlight {
     HL_MATCH
 };
 
+#define HL_HIGHLIGHT_NUMBERS (1<<0);
+
+struct editorSyntax {
+    char *filetype;
+    char **filematch;
+    int flags;
+};
+
 typedef struct erow {
     int size;
     int rsize;
@@ -62,6 +70,8 @@ struct editorConfig {
     time_t statusmsg_time;
     struct termios original_termios;
 };
+
+
 
 struct editorConfig E;
 void editorSetStatusMessage(const char *fmt, ...);
@@ -343,11 +353,20 @@ void editorUpdateSyntax(erow *row) {
     row -> hl = (unsigned char *)realloc(row -> hl, row -> rsize);
     memset(row -> hl, HL_NORMAL, row -> rsize);
     int i = 0;
+
+    int prev_sep = 1;
+
     while (i < row -> rsize) {
         char c = row -> render[i];
-        if (isdigit(c)) {
+        unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
+        if ((isdigit(c) && (prev_sep || prev_hl == HL_DIGIT)) ||
+            (c == '.' && prev_hl == HL_DIGIT)) {
             row -> hl[i] = HL_DIGIT;
+            i++;
+            prev_sep = 0;
+            continue;
         }
+        prev_sep = is_separator(c);
         i++;
     }
 }
