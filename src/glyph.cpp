@@ -39,11 +39,11 @@ enum editorHighlight {
     HL_MATCH
 };
 
-#define HL_HIGHLIGHT_NUMBERS (1<<0);
+#define HL_HIGHLIGHT_NUMBERS (1<<0)
 
 struct editorSyntax {
-    char *filetype;
-    char **filematch;
+    const char *filetype;
+    const char **filematch;
     int flags;
 };
 
@@ -71,7 +71,17 @@ struct editorConfig {
     struct termios original_termios;
 };
 
+/*** Filetypes ***/
+const char *C_HL_extensions[] = { ".c", ".h", ".cpp", NULL};
+struct editorSyntax HLDB[] = {
+    {
+        "c",
+        C_HL_extensions,
+        HL_HIGHLIGHT_NUMBERS
+    },
+};
 
+#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
 struct editorConfig E;
 void editorSetStatusMessage(const char *fmt, ...);
