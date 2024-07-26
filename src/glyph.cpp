@@ -49,8 +49,8 @@ enum editorHighlight {
 struct editorSyntax {
     const char *filetype;
     const char **filematch;
-    char **keywords;
-    char *singleline_comment_start;
+    const char **keywords;
+    const char *singleline_comment_start;
     int flags;
 };
 
@@ -81,7 +81,7 @@ struct editorConfig {
 
 /*** Filetypes ***/
 const char *C_HL_extensions[] = { ".c", ".h", ".cpp", NULL};
-char *C_HL_keywords[] = { "switch", "if", "while", "for", "break", 
+const char *C_HL_keywords[] = { "switch", "if", "while", "for", "break", 
 "continue", "return", "else", "struct", "union", "typedef", "static",
 "enum", "class", "case", "int|", "long|", "double|", "float|", "char|",
 "unsigned|", "signed|", "void|", NULL};
@@ -377,15 +377,18 @@ int is_separator(int c) {
 void editorUpdateSyntax(erow *row) {
     row -> hl = (unsigned char *)realloc(row -> hl, row -> rsize);
     memset(row -> hl, HL_NORMAL, row -> rsize);
-    int i = 0;
+
     if (E.syntax == NULL) return;
 
-    char *scs = E.syntax -> singleline_comment_start;
+    const char **keywords = E.syntax -> keywords;
+
+    const char *scs = E.syntax -> singleline_comment_start;
     int scs_length = scs ? strlen(scs) : 0;
 
     int prev_sep = 1;
     int in_string = 0;
 
+    int i = 0;
     while (i < row -> rsize) {
         char c = row -> render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
@@ -421,6 +424,26 @@ void editorUpdateSyntax(erow *row) {
                 (c == '.' && prev_hl == HL_DIGIT)) {
                 row -> hl[i] = HL_DIGIT;
                 i++;
+                prev_sep = 0;
+                continue;
+            }
+        }
+
+        if (prev_sep) {
+            int j;
+            for (j = 0; keywords[j]; j++) {
+                int klen = strlen(keywords[j]);
+                int kw2 = keywords[j][klen - 1] == '|';
+                if (kw2) klen--;
+
+                if (!strncmp(&row -> render[i], keywords[j], klen) && 
+                is_separator(row -> render[klen + i])) {
+                    memset(&row -> hl[i], kw2 ? HL_KEYWORD_2 : HL_KEYWORD_1, klen);
+                    i += klen;
+                    break;
+                }
+            }
+            if (keywords[j] != NULL) {
                 prev_sep = 0;
                 continue;
             }
@@ -566,7 +589,12 @@ void editorDrawRows(Abuf& ab) {
             int current_color = -1;
             int j;
             for (j = 0; j < len; j++) {
-                if (hl[j] == HL_NORMAL) {
+                if (iscntrl(c[j])) {
+                    char sym = (c[j] <= 26) ? '@' + c[j] : '?';
+                    ab.append("\x1b[7m", 4);
+                    ab.append(&sym, 1);
+                    ab.append("\x1b[m", 3);
+                } else if (hl[j] == HL_NORMAL) {
                     if (current_color != -1) {
                         ab.append("\x1b[39m", 5);
                         current_color = -1;
