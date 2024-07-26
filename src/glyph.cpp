@@ -58,11 +58,13 @@ struct editorSyntax {
 };
 
 typedef struct erow {
+    int idx;
     int size;
     int rsize;
     char *chars;
     char *render;
     unsigned char *hl;
+    int hl_open_comment;
 } erow;
 
 /*** Data ***/
@@ -395,20 +397,19 @@ void editorUpdateSyntax(erow *row) {
 
     int prev_sep = 1;
     int in_string = 0;
-    int in_comment = 0;
+    int in_comment = (row -> idx > 0 && E.row[row -> idx - 1].hl_open_comment);
 
     int i = 0;
     while (i < row -> rsize) {
         char c = row -> render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
-        if (scs_length && !in_string) {
+        if (scs_length && !in_string && !in_comment) {
             if (!strncmp(&row -> render[i], scs, scs_length)) {
                 memset(&row -> hl[i], HL_COMMENT, row -> rsize - i);
                 break;
             }
         }
-
         if (mcs_length && mce_length && !in_string) {
             if (in_comment) {
                 if (!strncmp(&row -> render[i], mce, mce_length)) {
@@ -480,6 +481,10 @@ void editorUpdateSyntax(erow *row) {
         prev_sep = is_separator(c);
         i++;
     }
+
+    int changed = (row -> hl_open_comment != in_comment);
+    row -> hl_open_comment = in_comment;
+    if (changed && row -> idx + 1 < E.numrows) editorUpdateSyntax(&E.row[row -> idx + 1]);
 }
 
 int editorSyntaxToColor(int hl) {
@@ -713,7 +718,9 @@ void editorInsertRow(int at, char *s, size_t len) {
 
     E.row = (erow* )realloc(E.row, sizeof(erow) * (E.numrows + 1));
     memmove(&E.row[at + 1], &E.row[at], sizeof(erow) * (E.numrows + 1));
+    for (int j = at + 1; j < E.numrows; j++) E.row[j].idx++;
 
+    E.row[at].idx = at;
     E.row[at].size = len;
     E.row[at].chars = (char* )malloc(len + 1);
     memcpy(E.row[at].chars, s, len);
@@ -722,6 +729,7 @@ void editorInsertRow(int at, char *s, size_t len) {
     E.row[at].rsize = 0;
     E.row[at].render = NULL;
     E.row[at].hl = NULL;
+    E.row[at].hl_open_comment = 0;
     editorUpdateRow(&E.row[at]);
     E.numrows++;
     E.dirty++;
@@ -737,6 +745,7 @@ void editorDelRow(int at) {
     if (at < 0 || at >= E.numrows) return;
     editorFreeRow(&E.row[at]);
     memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.numrows - at - 1));
+    for (int j = at; j < E.numrows; j++) E.row[at].idx--;
     E.numrows--;
     E.dirty++;
 }
