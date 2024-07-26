@@ -35,6 +35,9 @@ enum cursorKeys {
 
 enum editorHighlight {
     HL_NORMAL = 0,
+    HL_COMMENT,
+    HL_KEYWORD_1,
+    HL_KEYWORD_2,
     HL_STRING,
     HL_DIGIT,
     HL_MATCH
@@ -46,6 +49,8 @@ enum editorHighlight {
 struct editorSyntax {
     const char *filetype;
     const char **filematch;
+    char **keywords;
+    char *singleline_comment_start;
     int flags;
 };
 
@@ -76,10 +81,17 @@ struct editorConfig {
 
 /*** Filetypes ***/
 const char *C_HL_extensions[] = { ".c", ".h", ".cpp", NULL};
+char *C_HL_keywords[] = { "switch", "if", "while", "for", "break", 
+"continue", "return", "else", "struct", "union", "typedef", "static",
+"enum", "class", "case", "int|", "long|", "double|", "float|", "char|",
+"unsigned|", "signed|", "void|", NULL};
+
 struct editorSyntax HLDB[] = {
     {
         "c",
         C_HL_extensions,
+        C_HL_keywords,
+        "//",
         HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
     },
 };
@@ -368,6 +380,9 @@ void editorUpdateSyntax(erow *row) {
     int i = 0;
     if (E.syntax == NULL) return;
 
+    char *scs = E.syntax -> singleline_comment_start;
+    int scs_length = scs ? strlen(scs) : 0;
+
     int prev_sep = 1;
     int in_string = 0;
 
@@ -375,9 +390,21 @@ void editorUpdateSyntax(erow *row) {
         char c = row -> render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
+        if (scs_length && !in_string) {
+            if (!strncmp(&row -> render[i], scs, scs_length)) {
+                memset(&row -> hl[i], HL_COMMENT, row -> rsize - i);
+                break;
+            }
+        }
+
         if (E.syntax -> flags & HL_HIGHLIGHT_STRINGS) {
             if (in_string) {
                 row -> hl[i] = HL_STRING;
+                if (c == '\\' && i + 1 < row -> rsize) {
+                    row -> hl[i + 1] = HL_STRING;
+                    i += 2;
+                    continue;
+                }
                 if (c == in_string) in_string = 0;
                 prev_sep = 1;
                 i++;
@@ -405,6 +432,10 @@ void editorUpdateSyntax(erow *row) {
 
 int editorSyntaxToColor(int hl) {
     switch (hl) {
+        case (HL_COMMENT): return 36;
+        case (HL_STRING): return 35;
+        case (HL_KEYWORD_1): return 33;
+        case (HL_KEYWORD_2): return 32;
         case (HL_DIGIT): return 31;
         case (HL_MATCH): return 34;
         default: return 37;
