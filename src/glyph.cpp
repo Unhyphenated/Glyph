@@ -407,6 +407,11 @@ void editorSelectSyntaxHighlight() {
             if ((is_ext && ext && !strcmp(ext, s -> filematch[i])) || 
             (!is_ext && strstr(E.filename, s -> filematch[i]))) {
                 E.syntax = s;
+                
+                int filerow;
+                for (filerow = 0; filerow < E.numrows; filerow++) {
+                    editorUpdateSyntax(&E.row[filerow]);
+                }
                 return;
             }
             i++;
@@ -426,7 +431,6 @@ void editorDrawStatusBar(Abuf& ab) {
     E.cy + 1, E.numrows);
     
     if (len > E.screencols) len = E.screencols;
-    int rlen = snprintf(rstatus, sizeof(rstatus), "%d %d", E.cy + 1, E.numrows);
     ab.append(status, len);
     while (len < E.screencols) {
         if (E.screencols - len == rlen) {
