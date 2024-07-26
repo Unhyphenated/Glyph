@@ -36,6 +36,7 @@ enum cursorKeys {
 enum editorHighlight {
     HL_NORMAL = 0,
     HL_COMMENT,
+    HL_MLCOMMENT,
     HL_KEYWORD_1,
     HL_KEYWORD_2,
     HL_STRING,
@@ -51,6 +52,8 @@ struct editorSyntax {
     const char **filematch;
     const char **keywords;
     const char *singleline_comment_start;
+    const char *multiline_comment_start;
+    const char *multiline_comment_end;
     int flags;
 };
 
@@ -91,7 +94,7 @@ struct editorSyntax HLDB[] = {
         "c",
         C_HL_extensions,
         C_HL_keywords,
-        "//",
+        "//", "/*", "*/",
         HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
     },
 };
@@ -383,10 +386,16 @@ void editorUpdateSyntax(erow *row) {
     const char **keywords = E.syntax -> keywords;
 
     const char *scs = E.syntax -> singleline_comment_start;
+    const char *mcs = E.syntax -> multiline_comment_start;
+    const char *mce = E.syntax -> multiline_comment_end;
+
     int scs_length = scs ? strlen(scs) : 0;
+    int mcs_length = mcs ? strlen(mcs) : 0;
+    int mce_length = mce ? strlen(mce) : 0;
 
     int prev_sep = 1;
     int in_string = 0;
+    int in_comment = 0;
 
     int i = 0;
     while (i < row -> rsize) {
@@ -397,6 +406,26 @@ void editorUpdateSyntax(erow *row) {
             if (!strncmp(&row -> render[i], scs, scs_length)) {
                 memset(&row -> hl[i], HL_COMMENT, row -> rsize - i);
                 break;
+            }
+        }
+
+        if (mcs_length && mce_length && !in_string) {
+            if (in_comment) {
+                if (!strncmp(&row -> render[i], mce, mce_length)) {
+                    memset(&row -> hl[i], HL_MLCOMMENT, mce_length);
+                    in_comment = 0;
+                    prev_sep = 1;
+                    i += mce_length;
+                    continue;
+                } else {
+                    i++;
+                    continue;
+                }
+            } else if (!strncmp(&row -> render[i], mcs, mcs_length)) {
+                memset(&row -> hl[i], HL_MLCOMMENT, mcs_length);
+                in_comment = 1;
+                i += mcs_length;
+                continue;
             }
         }
 
@@ -455,6 +484,7 @@ void editorUpdateSyntax(erow *row) {
 
 int editorSyntaxToColor(int hl) {
     switch (hl) {
+        case (HL_MLCOMMENT):
         case (HL_COMMENT): return 36;
         case (HL_STRING): return 35;
         case (HL_KEYWORD_1): return 33;
@@ -594,6 +624,11 @@ void editorDrawRows(Abuf& ab) {
                     ab.append("\x1b[7m", 4);
                     ab.append(&sym, 1);
                     ab.append("\x1b[m", 3);
+                    if (current_color != -1) {
+                        char buf[16];
+                        int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", current_color);
+                        ab.append(buf, clen);
+                    }
                 } else if (hl[j] == HL_NORMAL) {
                     if (current_color != -1) {
                         ab.append("\x1b[39m", 5);
