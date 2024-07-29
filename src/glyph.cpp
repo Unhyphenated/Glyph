@@ -412,11 +412,12 @@ void editorUpdateSyntax(erow *row) {
         }
         if (mcs_length && mce_length && !in_string) {
             if (in_comment) {
+                row->hl[i] = HL_MLCOMMENT;
                 if (!strncmp(&row -> render[i], mce, mce_length)) {
                     memset(&row -> hl[i], HL_MLCOMMENT, mce_length);
+                    i += mce_length;
                     in_comment = 0;
                     prev_sep = 1;
-                    i += mce_length;
                     continue;
                 } else {
                     i++;
@@ -424,8 +425,8 @@ void editorUpdateSyntax(erow *row) {
                 }
             } else if (!strncmp(&row -> render[i], mcs, mcs_length)) {
                 memset(&row -> hl[i], HL_MLCOMMENT, mcs_length);
-                in_comment = 1;
                 i += mcs_length;
+                in_comment = 1;
                 continue;
             }
         }
@@ -439,16 +440,19 @@ void editorUpdateSyntax(erow *row) {
                     continue;
                 }
                 if (c == in_string) in_string = 0;
+                i++;
                 prev_sep = 1;
-                i++;
                 continue;
-            } else if (c == '"' || c == '\'') {
-                in_string = c;
-                row -> hl[i] = HL_STRING;
-                i++;
-                continue;
+            } else {
+                if (c == '"' || c == '\'') {
+                    in_string = c;
+                    row -> hl[i] = HL_STRING;
+                    i++;
+                    continue;
+                }
             }
         }
+        
         if (E.syntax -> flags & HL_HIGHLIGHT_NUMBERS) {
             if ((isdigit(c) && (prev_sep || prev_hl == HL_DIGIT)) ||
                 (c == '.' && prev_hl == HL_DIGIT)) {
@@ -650,8 +654,9 @@ void editorDrawRows(Abuf& ab) {
                     }
                     ab.append(&c[j], 1);
                 }
-                ab.append("\x1b[39m", 5);
+                
             }
+            ab.append("\x1b[39m", 5);
         }
 
         ab.append("\x1b[K", 3);
